@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Пример AJAX запроса для кабинета</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+    <form id="cabinetForm">
+        <label for="name">Имя:</label>
+        <input type="text" id="name" name="name" required><br><br>
+        <label for="company">Компания:</label>
+        <input type="text" id="company" name="company" required><br><br>
+        <label for="user">Пользователь:</label>
+        <select id="user" name="user" required>
+            <!-- Здесь будет отображаться список пользователей -->
+        </select><br><br>
+        <input type="submit" value="Добавить кабинет">
+    </form>
+    <div id="cabinetList">
+        <!-- Здесь будет отображаться список кабинетов -->
+    </div>
+    <div id="editCabinetModal" style="display: none;">
+        <form id="editCabinetForm">
+            <input type="hidden" id="editCabinetId">
+            <label for="editCabinetName">Имя:</label>
+            <input type="text" id="editCabinetName" name="editCabinetName" required><br><br>
+            <label for="editCabinetCompany">Компания:</label>
+            <input type="text" id="editCabinetCompany" name="editCabinetCompany" required><br><br>
+            <label for="editCabinetUser">Пользователь:</label>
+            <select id="editCabinetUser" name="editCabinetUser" required>
+                <!-- Здесь будет отображаться список пользователей -->
+            </select><br><br>
+            <input type="submit" value="Сохранить">
+        </form>
+    </div>
+    <button onclick="window.location.href='user.html'">Перейти на страницу</button>
+    <script>
+        function getUsersForDropdown() {
+            $.ajax({
+                url: 'https://localhost:44371/User/get_users',
+                type: 'POST',
+                dataType: 'json',
+                success: function (response) {
+                    var userDropdown = $('#user');
+                    userDropdown.empty();
+                    response.forEach(function (user) {
+                        var option = $('<option>').val(user.id).text(user.id + ' - ' + user.name);
+                        userDropdown.append(option);
+                    });
+
+                    // Добавим также обновление списка пользователей в выпадающем списке модального окна редактирования
+                    var editCabinetUserDropdown = $('#editCabinetUser');
+                    editCabinetUserDropdown.empty();
+                    response.forEach(function (user) {
+                        var option = $('<option>').val(user.id).text(user.id + ' - ' + user.name);
+                        editCabinetUserDropdown.append(option);
+                    });
+                },
+                error: function (xhr, status, error) {
+                    alert('Ошибка при получении списка пользователей: ' + error);
+                }
+            });
+        }
+        function getCabinets() {
+            $.ajax({
+                url: 'https://localhost:44371/User/get_cabinet',
+                type: 'POST',
+                dataType: 'json',
+                success: function (response) {
+                    var cabinetList = $('#cabinetList');
+                    cabinetList.empty();
+                    response.forEach(function (cabinet) {
+                        var cabinetItem = $('<div>').text('ID: ' + cabinet.id + ', Имя: ' + cabinet.name + ', Компания: ' + cabinet.company + ', Пользователь: ' + cabinet.user_id);
+                        var editButton = $('<button>').text('Изменить').click(function () {
+                            openEditCabinetModal(cabinet);
+                        });
+                        var deleteButton = $('<button>').text('Удалить').click(function () {
+                            deleteCabinet(cabinet.id);
+                        });
+                        cabinetItem.append(editButton, deleteButton);
+                        cabinetList.append(cabinetItem);
+                    });
+                },
+                error: function (xhr, status, error) {
+                    alert('Ошибка при получении списка кабинетов: ' + error);
+                }
+            });
+        }
+        function openEditCabinetModal(cabinet) {
+            // Открытие модального окна с данными кабинета для редактирования
+            // Загрузка данных кабинета в форму модального окна
+            $('#editCabinetId').val(cabinet.id);
+            $('#editCabinetName').val(cabinet.name);
+            $('#editCabinetCompany').val(cabinet.company);
+            getUsersForDropdown(); // Получение списка пользователей для выпадающего списка
+
+            // Задержка выполнения функции до момента, когда список пользователей будет загружен
+            setTimeout(function () {
+                $('#editCabinetUser').val(cabinet.user_id.toString()); // Выбор элемента с соответствующим значением
+                $('#editCabinetModal').show();
+            }, 500); // Задержка в 500 миллисекунд (может потребоваться изменение значения в зависимости от скорости загрузки списка пользователей)
+        }
+        function deleteCabinet(cabinetId) {
+            var requestData = {
+                id: cabinetId
+            };
+            $.ajax({
+                url: 'https://localhost:44371/User/del_cabinet',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify(requestData),
+                success: function (response) {
+                    alert('Кабинет успешно удален');
+                    getCabinets(); // Обновляем список кабинетов после удаления
+                },
+                error: function (xhr, status, error) {
+                    alert('Ошибка при удалении кабинета: ' + error);
+                }
+            });
+        }
+        function updateCabinet() {
+            var cabinetId = parseInt($('#editCabinetId').val());
+            var name = $('#editCabinetName').val();
+            var company = $('#editCabinetCompany').val();
+            var user_id = parseInt($('#editCabinetUser').val());
+            var requestData = {
+                id: cabinetId,
+                name: name,
+                company: company,
+                user_id: user_id
+            };
+            $.ajax({
+                url: 'https://localhost:44371/User/update_cabinet',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify(requestData),
+                success: function (response) {
+                    alert('Данные кабинета успешно обновлены');
+                    $('#editCabinetModal').hide();
+                    getCabinets(); // Обновляем список кабинетов после изменения
+                },
+                error: function (xhr, status, error) {
+                    alert('Ошибка при обновлении данных кабинета: ' + error);
+                }
+            });
+        }
+        $(document).ready(function () {
+            getUsersForDropdown();
+            getCabinets();
+            $('#cabinetForm').submit(function (event) {
+                event.preventDefault();
+                var name = $('#name').val();
+                var company = $('#company').val();
+                var user_id = parseInt($('#user').val());
+                var requestData = {
+                    name: name,
+                    company: company,
+                    user_id: user_id
+                };
+                $.ajax({
+                    url: 'https://localhost:44371/User/add_cabinet',
+                    type: 'POST',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestData),
+                    success: function (response) {
+                        alert('Кабинет успешно добавлен. ID: ' + response);
+                        getCabinets();
+                    },
+                    error: function (xhr, status, error) {
+                        alert('Ошибка при добавлении кабинета: ' + error);
+                    }
+                });
+            });
+            $('#editCabinetModal').submit(function (event) {
+                event.preventDefault();
+                updateCabinet();
+            });
+        });
+    </script>
+</body>
+
+</html>

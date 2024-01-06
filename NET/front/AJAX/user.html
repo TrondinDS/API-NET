@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Пример AJAX запроса</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+    <form id="userForm">
+        <label for="name">Имя:</label>
+        <input type="text" id="name" name="name" required><br><br>
+        <label for="date">Дата:</label>
+        <input type="date" id="date" name="date" required><br><br>
+        <input type="submit" value="Добавить пользователя">
+    </form>
+
+    <div id="userList">
+        <!-- Здесь будет отображаться список пользователей -->
+    </div>
+
+
+    <div id="editModal" style="display: none;">
+        <form id="editForm">
+            <input type="hidden" id="editUserId">
+            <label for="editName">Имя:</label>
+            <input type="text" id="editName" name="editName" required><br><br>
+            <label for="editDate">Дата:</label>
+            <input type="date" id="editDate" name="editDate" required><br><br>
+            <input type="submit" value="Сохранить">
+        </form>
+    </div>
+    <button onclick="window.location.href='cabinet.html'">Перейти на страницу</button>
+
+    <script>
+        function getUsers() {
+            $.ajax({
+                url: 'https://localhost:44371/User/get_users',
+                type: 'POST',
+                dataType: 'json',
+                success: function (response) {
+                    var userList = $('#userList');
+                    userList.empty();
+                    response.forEach(function (user) {
+                        var userItem = $('<div>').text('ID: ' + user.id + ', Имя: ' + user.name + ', Дата: ' + user.date);
+                        var editButton = $('<button>').text('Изменить').click(function () {
+                            openEditModal(user);
+                        });
+                        var deleteButton = $('<button>').text('Удалить').click(function () {
+                            deleteUser(user.id);
+                        });
+                        userItem.append(editButton, deleteButton);
+                        userList.append(userItem);
+                    });
+                },
+                error: function (xhr, status, error) {
+                    alert('Ошибка при получении списка пользователей: ' + error);
+                }
+            });
+        }
+
+        function openEditModal(user) {
+            // Открытие модального окна с данными пользователя для редактирования
+            // Загрузка данных пользователя в форму модального окна
+            $('#editUserId').val(user.id);
+            $('#editName').val(user.name);
+            $('#editDate').val(user.date);
+            $('#editModal').show();
+        }
+
+        function deleteUser(userId) {
+            var requestData = {
+                id: userId
+            };
+            $.ajax({
+                url: 'https://localhost:44371/User/del_user',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify(requestData),
+                success: function (response) {
+                    alert('Пользователь успешно удален');
+                    getUsers(); // Обновляем список пользователей после удаления
+                },
+                error: function (xhr, status, error) {
+                    alert('Ошибка при удалении пользователя: ' + error);
+                }
+            });
+        }
+
+        function updateUser() {
+            var userId = parseInt($('#editUserId').val());
+            var name = $('#editName').val();
+            var date = $('#editDate').val();
+            var requestData = {
+                id: userId,
+                name: name,
+                date: date
+            };
+            $.ajax({
+                url: 'https://localhost:44371/User/update_user',
+                type: 'POST',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify(requestData),
+                success: function (response) {
+                    alert('Данные пользователя успешно обновлены');
+                    $('#editModal').hide();
+                    getUsers(); // Обновляем список пользователей после изменения
+                },
+                error: function (xhr, status, error) {
+                    alert('Ошибка при обновлении данных пользователя: ' + error + userId + name + date);
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            getUsers();
+
+            $('#userForm').submit(function (event) {
+                event.preventDefault();
+                var name = $('#name').val();
+                var date = $('#date').val();
+                var requestData = {
+                    name: name,
+                    date: date
+                };
+                $.ajax({
+                    url: 'https://localhost:44371/User/add_user',
+                    type: 'POST',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    data: JSON.stringify(requestData),
+                    success: function (response) {
+                        alert('Пользователь успешно добавлен. ID: ' + response);
+                        getUsers();
+                    },
+                    error: function (xhr, status, error) {
+                        alert('Ошибка при добавлении пользователя: ' + error);
+                    }
+                });
+            });
+
+            $('#editModal').submit(function (event) {
+                event.preventDefault();
+                updateUser();
+            });
+        });
+
+        $(document).ready(initializePage);
+    </script>
+</body>
+
+</html>
